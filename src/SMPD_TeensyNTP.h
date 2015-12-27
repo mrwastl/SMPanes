@@ -4,6 +4,9 @@
  * SMPD_TeensyNTP.h
  * Class for Teensy RTC time chip, time is set by NTP (using an EtherCard based board)
  *
+ * Required non standard libraries:
+ *   EtherCard:         https://github.com/jcw/ethercard
+ *
  *************************************************************************
  *
  * copyright (C)  2015  wolfgang astleitner

@@ -5,6 +5,10 @@
  * Class for Teensy RTC time chip, time is set by NTP (using an EtherCard based board)
  * and timezone corrected
  *
+ * Required non standard libraries:
+ *   EtherCard:         https://github.com/jcw/ethercard
+ *   Timezone:          https://github.com/JChristensen/Timezone
+ *
  *************************************************************************
  *
  * copyright (C)  2015  wolfgang astleitner
@@ -34,7 +38,7 @@
 
 #include "SMPD_TeensyNTP.h"
 #include <EtherCard.h>
-#include <Timezone.h>    // https://github.com/JChristensen/Timezone
+#include <Timezone.h>
 
 class SMPD_TeensyNTPTZ : public SMPD_TeensyNTP {
   public:

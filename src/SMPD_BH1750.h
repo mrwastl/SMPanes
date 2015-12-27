@@ -4,6 +4,9 @@
  * SMPD_BH1750.h
  * Class for BH1750 light sensor
  *
+ * Required non standard libraries:
+ *   AS_BH1750:         https://github.com/hexenmeister/AS_BH1750
+ *
  *************************************************************************
  *
  * copyright (C)  2015  wolfgang astleitner

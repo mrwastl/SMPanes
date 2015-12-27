@@ -9,6 +9,9 @@
  * copyright (C)  2015  wolfgang astleitner
  * email     mrwastl@users.sourceforge.net
  *
+ * Required non standard libraries:
+ *   idDHTLib:          https://github.com/niesteszeck/idDHTLib
+ *
  *************************************************************************
  * This program is free software; you can redistribute it and/or modify   
  * it under the terms of the GNU General Public License as published by   
