@@ -57,6 +57,29 @@ typedef enum Align {
 } Align;
 
 
+// internal class for managing SmartMatrix layers
+class SMP_Layer {
+  friend class SMP_Base;
+  protected:
+                              SMP_Layer();
+                             //~SMP_Layer();
+    static    bool            internalAdd (SM_Layer& layer, LayerType layerType, uint8_t layerDepth);
+
+              void            clear(rgb24 clearCol = rgb24(0, 0, 0));
+    static    void            clearAll(rgb24 clearCol = rgb24(0, 0, 0));
+
+              SMP_Layer     * getNextLayer() { return this->nextLayer; };
+  private:
+              SM_Layer      * currLayer;
+              LayerType       currType;
+              uint8_t         currDepth;
+
+              SMP_Layer     * nextLayer;
+    static    SMP_Layer     * firstLayer;
+    static    SMP_Layer     * lastLayer;
+};
+
+
 class SMP_Base {
   public:
     virtual   bool            update(uint32_t currMS = 0) = 0;
@@ -88,15 +111,39 @@ class SMP_Base {
               bool            setParent(SMLayerIndexed<rgb48,0>& parent) { return internalSetParent(parent, scrolling, 48);};
 
     /* static public methods */
-    static    void            initChain(uint16_t matrixWidth, uint16_t matrixHeight);
+    static    void            chainInit(uint16_t matrixWidth, uint16_t matrixHeight);
+
+    /* poor man's reflection. very ugly, better solution would be nice */
+    /*
+    static    bool            chainAddLayer(SM_Layer & layer) { ... }
+    */
 #if SM_SUPPORT_ADDITIONAL_COLOURSPACES == 1
-    static    void            chainAdd(SMP_Base & pane, SMLayerBackground<rgb8,0>& parent);
-    static    void            chainAdd(SMP_Base & pane, SMLayerBackground<rgb16,0>& parent);
+    static    bool            chainAddLayer(SMLayerBackground<rgb8,0>& layer)  { return SMP_Layer::internalAdd(layer, background, 8);};
+    static    bool            chainAddLayer(SMLayerBackground<rgb16,0>& layer) { return SMP_Layer::internalAdd(layer, background, 16);};
 #endif
-    static    void            chainAdd(SMP_Base & pane, SMLayerBackground<rgb24,0>& parent);
-    static    void            chainAdd(SMP_Base & pane, SMLayerBackground<rgb48,0>& parent);
-    static    bool            updateAll(uint32_t currMS = 0);
-    static    void            drawAll();
+    static    bool            chainAddLayer(SMLayerBackground<rgb24,0>& layer) { return SMP_Layer::internalAdd(layer, background, 24);};
+    static    bool            chainAddLayer(SMLayerBackground<rgb48,0>& layer) { return SMP_Layer::internalAdd(layer, background, 48);};
+#if SM_SUPPORT_ADDITIONAL_COLOURSPACES == 1
+    static    bool            chainAddLayer(SMLayerScrolling<rgb8,0>& layer)   { return SMP_Layer::internalAdd(layer, indexed, 8);};
+    static    bool            chainAddLayer(SMLayerScrolling<rgb16,0>& layer)  { return SMP_Layer::internalAdd(layer, indexed, 16);};
+#endif
+    static    bool            chainAddLayer(SMLayerScrolling<rgb24,0>& layer)  { return SMP_Layer::internalAdd(layer, indexed, 24);};
+    static    bool            chainAddLayer(SMLayerScrolling<rgb48,0>& layer)  { return SMP_Layer::internalAdd(layer, indexed, 48);};
+#if SM_SUPPORT_ADDITIONAL_COLOURSPACES == 1
+    static    bool            chainAddLayer(SMLayerIndexed<rgb8,0>& layer)     { return SMP_Layer::internalAdd(layer, scrolling, 8);};
+    static    bool            chainAddLayer(SMLayerIndexed<rgb16,0>& layer)    { return SMP_Layer::internalAdd(layer, scrolling, 16);};
+#endif
+    static    bool            chainAddLayer(SMLayerIndexed<rgb24,0>& layer)    { return SMP_Layer::internalAdd(layer, scrolling, 24);};
+    static    bool            chainAddLayer(SMLayerIndexed<rgb48,0>& layer)    { return SMP_Layer::internalAdd(layer, scrolling, 48);};
+
+#if SM_SUPPORT_ADDITIONAL_COLOURSPACES == 1
+    static    void            chainAddPane(SMP_Base & pane, SMLayerBackground<rgb8,0>& parent);
+    static    void            chainAddPane(SMP_Base & pane, SMLayerBackground<rgb16,0>& parent);
+#endif
+    static    void            chainAddPane(SMP_Base & pane, SMLayerBackground<rgb24,0>& parent);
+    static    void            chainAddPane(SMP_Base & pane, SMLayerBackground<rgb48,0>& parent);
+    static    bool            chainNeedsUpdate(uint32_t currMS = 0);
+    static    void            chainDraw(rgb24 clearCol = rgb24(0,0,0));
 
     static    bool            sendMessage(uint8_t id, String message);
 

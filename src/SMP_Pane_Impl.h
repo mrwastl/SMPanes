@@ -56,34 +56,34 @@ void SMP_Base::chainPane(SMP_Base & nextPane) {
 
 
 
-void SMP_Base::initChain(uint16_t matrixWidth, uint16_t matrixHeight) {
+void SMP_Base::chainInit(uint16_t matrixWidth, uint16_t matrixHeight) {
   SMP_Base::matrixWidth = matrixWidth;
   SMP_Base::matrixHeight = matrixHeight;
 }
 
 #if SM_SUPPORT_ADDITIONAL_COLOURSPACES == 1
-void SMP_Base::chainAdd(SMP_Base & pane, SMLayerBackground<rgb8,0>& parent) {
+void SMP_Base::chainAddPane(SMP_Base & pane, SMLayerBackground<rgb8,0>& parent) {
   internalChainAdd(pane);
   pane.setParent(parent);
 }
 
-void SMP_Base::chainAdd(SMP_Base & pane, SMLayerBackground<rgb16,0>& parent) {
+void SMP_Base::chainAddPane(SMP_Base & pane, SMLayerBackground<rgb16,0>& parent) {
   internalChainAdd(pane);
   pane.setParent(parent);
 }
 #endif
 
-void SMP_Base::chainAdd(SMP_Base & pane, SMLayerBackground<rgb24,0>& parent) {
+void SMP_Base::chainAddPane(SMP_Base & pane, SMLayerBackground<rgb24,0>& parent) {
   internalChainAdd(pane);
   pane.setParent(parent);
 }
 
-void SMP_Base::chainAdd(SMP_Base & pane, SMLayerBackground<rgb48,0>& parent) {
+void SMP_Base::chainAddPane(SMP_Base & pane, SMLayerBackground<rgb48,0>& parent) {
   internalChainAdd(pane);
   pane.setParent(parent);
 }
 
-bool SMP_Base::updateAll(uint32_t currMS) {
+bool SMP_Base::chainNeedsUpdate(uint32_t currMS) {
   bool rv = false;
   SMP_Base * next = SMP_Base::firstPane;
   do {
@@ -92,7 +92,9 @@ bool SMP_Base::updateAll(uint32_t currMS) {
   return rv;
 }
 
-void SMP_Base::drawAll() {
+void SMP_Base::chainDraw(rgb24 clearCol) {
+  SMP_Layer::clearAll(clearCol);
+
   SMP_Base * next = SMP_Base::firstPane;
   do {
     next->draw();
@@ -128,6 +130,80 @@ bool SMP_Base::sendMessage(uint8_t id, String message) {
 
 
 
+SMP_Layer * SMP_Layer::firstLayer = NULL;
+SMP_Layer * SMP_Layer::lastLayer = NULL;
+
+
+SMP_Layer::SMP_Layer() {
+  this->currLayer = NULL;
+  this->nextLayer = NULL;
+}
+
+bool SMP_Layer::internalAdd (SM_Layer& layer, LayerType layerType, uint8_t layerDepth) {
+  bool found = false;
+  SMP_Layer * l = SMP_Layer::firstLayer;
+  while (!found && l) {
+    if (l->currLayer == &layer) {
+      found = true;  // don't add layer twice
+    } else {
+      l = l->getNextLayer();
+    }
+  }
+  if (!found) {
+    if ( ! SMP_Layer::firstLayer ) {
+      SMP_Layer::firstLayer = new SMP_Layer();
+      SMP_Layer::lastLayer = SMP_Layer::firstLayer;
+      SMP_Layer::firstLayer->currLayer = &layer;
+      SMP_Layer::firstLayer->currType = layerType;
+      SMP_Layer::firstLayer->currDepth = layerDepth;
+    } else {
+      SMP_Layer::lastLayer->nextLayer = new SMP_Layer();
+      SMP_Layer::lastLayer->nextLayer->currLayer = &layer;
+      SMP_Layer::lastLayer->nextLayer->currType = layerType;
+      SMP_Layer::lastLayer->nextLayer->currDepth = layerDepth;
+      SMP_Layer::lastLayer = SMP_Layer::lastLayer->nextLayer;
+    }
+  }
+  return found;
+}
+
+void SMP_Layer::clear(rgb24 clearCol) {
+  switch(this->currType) {
+    case background:
+      switch(this->currDepth) {
+#if SM_SUPPORT_ADDITIONAL_COLOURSPACES == 1
+        case 8:  ((SMLayerBackground<rgb8,0>*)this->currLayer)->fillScreen( clearCol ); break;
+        case 16: ((SMLayerBackground<rgb16,0>*)this->currLayer)->fillScreen( clearCol ); break;
+#endif
+        case 24: ((SMLayerBackground<rgb24,0>*)this->currLayer)->fillScreen( clearCol ); break;
+        case 48: ((SMLayerBackground<rgb48,0>*)this->currLayer)->fillScreen( clearCol ); break;
+        default: ; // ignore
+      }
+      break;
+    case indexed:
+      switch(this->currDepth) {
+#if SM_SUPPORT_ADDITIONAL_COLOURSPACES == 1
+        case 8:  ((SMLayerIndexed<rgb8,0>*)this->currLayer)->fillScreen( 0 ); break;
+        case 16: ((SMLayerIndexed<rgb16,0>*)this->currLayer)->fillScreen( 0 ); break;
+#endif
+        case 24: ((SMLayerIndexed<rgb24,0>*)this->currLayer)->fillScreen( 0 ); break;
+        case 48: ((SMLayerIndexed<rgb48,0>*)this->currLayer)->fillScreen( 0 ); break;
+        default: ; // ignore
+      }
+      break;
+    default:
+      ; // do nothing
+  }
+}
+
+
+void SMP_Layer::clearAll(rgb24 clearCol) {
+  SMP_Layer * l = SMP_Layer::firstLayer;
+  while (l) {
+    l->clear(clearCol);
+    l = l->getNextLayer();
+  }
+}
 
 
 
