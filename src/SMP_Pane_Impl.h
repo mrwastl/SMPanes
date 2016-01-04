@@ -6,7 +6,7 @@
  *
  *************************************************************************
  *
- * copyright (C)  2015  wolfgang astleitner
+ * copyright (C)  2015-2016  wolfgang astleitner
  * email     mrwastl@users.sourceforge.net
  *
  *************************************************************************
@@ -234,10 +234,10 @@ void SMP_Pane<smpRGB>::setPosition (uint16_t x, uint16_t y, Align posAlignHor, A
   if (SMP_Base::matrixWidth > this->w) {
     switch(posAlignHor) {
       case center:
-        newX = (SMP_Base::matrixWidth - this->w) / 2;
+        newX = ((SMP_Base::matrixWidth - this->w) / 2) + x;
         break;
       case right:
-          newX = SMP_Base::matrixWidth - this->w;
+          newX = SMP_Base::matrixWidth - this->w - x;
         break;
       default:
         ; // do nothing
@@ -246,18 +246,26 @@ void SMP_Pane<smpRGB>::setPosition (uint16_t x, uint16_t y, Align posAlignHor, A
     newX = 0;
   }
 
+  if (newX < 0) {
+    newX = 0;
+  }
+
   if (SMP_Base::matrixHeight > this->h) {
     switch(posAlignVert) {
       case middle:
-          newY = (SMP_Base::matrixHeight - this->h) / 2;
+          newY = ((SMP_Base::matrixHeight - this->h) / 2) + y;
         break;
       case bottom:
-          newY = SMP_Base::matrixHeight - this->h;
+          newY = SMP_Base::matrixHeight - this->h - y;
         break;
       default:
         ; // do nothing
     }
   } else {
+    newY = 0;
+  }
+
+  if (newY < 0) {
     newY = 0;
   }
 

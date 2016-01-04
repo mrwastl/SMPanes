@@ -4,12 +4,14 @@
  * SMP_Pane.h
  * Abstract base classes SMP_Base and SMP_Pane for all derived Pane-classes
  *
+ * SMP_Layers is an internal helper class for managing SmartMatrix layers
+ *
  * SMP_Base is the template-free base class of SMP_Pane and also defines
- * some static methods for chaining panes and process these in one go.
+ * static methods for chaining panes and layers and process these in one go.
  *
  *************************************************************************
  *
- * copyright (C)  2015  wolfgang astleitner
+ * copyright (C)  2015-2016  wolfgang astleitner
  * email     mrwastl@users.sourceforge.net
  *
  *************************************************************************
@@ -62,7 +64,6 @@ class SMP_Layer {
   friend class SMP_Base;
   protected:
                               SMP_Layer();
-                             //~SMP_Layer();
     static    bool            internalAdd (SM_Layer& layer, LayerType layerType, uint8_t layerDepth);
 
               void            clear(rgb24 clearCol = rgb24(0, 0, 0));
@@ -90,7 +91,8 @@ class SMP_Base {
               void            chainPane(SMP_Base & nextPane);
               SMP_Base      * getNextPane() { return this->nextPane; };
 
-    /* poor man's reflection. very ugly, better solution would be nice */
+ /* poor man's reflection. very ugly, better solution would be nice */
+ /*           bool            setParent(SMLayerXXXXX & parent);  */
 #if SM_SUPPORT_ADDITIONAL_COLOURSPACES == 1
               bool            setParent(SMLayerBackground<rgb8,0>& parent) { return internalSetParent(parent, background, 8);};
               bool            setParent(SMLayerBackground<rgb16,0>& parent) { return internalSetParent(parent, background, 16);};
@@ -113,10 +115,8 @@ class SMP_Base {
     /* static public methods */
     static    void            chainInit(uint16_t matrixWidth, uint16_t matrixHeight);
 
-    /* poor man's reflection. very ugly, better solution would be nice */
-    /*
-    static    bool            chainAddLayer(SM_Layer & layer) { ... }
-    */
+ /* poor man's reflection. very ugly, better solution would be nice */
+ /* static    bool            chainAddLayer(SMLayerXXXXX & layer); */
 #if SM_SUPPORT_ADDITIONAL_COLOURSPACES == 1
     static    bool            chainAddLayer(SMLayerBackground<rgb8,0>& layer)  { return SMP_Layer::internalAdd(layer, background, 8);};
     static    bool            chainAddLayer(SMLayerBackground<rgb16,0>& layer) { return SMP_Layer::internalAdd(layer, background, 16);};
@@ -136,12 +136,14 @@ class SMP_Base {
     static    bool            chainAddLayer(SMLayerIndexed<rgb24,0>& layer)    { return SMP_Layer::internalAdd(layer, scrolling, 24);};
     static    bool            chainAddLayer(SMLayerIndexed<rgb48,0>& layer)    { return SMP_Layer::internalAdd(layer, scrolling, 48);};
 
+ /* static    void            chainAddPane(SMP_Base & pane, SMLayerXXXXX & parent); */
 #if SM_SUPPORT_ADDITIONAL_COLOURSPACES == 1
     static    void            chainAddPane(SMP_Base & pane, SMLayerBackground<rgb8,0>& parent);
     static    void            chainAddPane(SMP_Base & pane, SMLayerBackground<rgb16,0>& parent);
 #endif
     static    void            chainAddPane(SMP_Base & pane, SMLayerBackground<rgb24,0>& parent);
     static    void            chainAddPane(SMP_Base & pane, SMLayerBackground<rgb48,0>& parent);
+
     static    bool            chainNeedsUpdate(uint32_t currMS = 0);
     static    void            chainDraw(rgb24 clearCol = rgb24(0,0,0));
 
