@@ -6,7 +6,7 @@
  *
  *************************************************************************
  *
- * copyright (C)  2015  wolfgang astleitner
+ * copyright (C)  2015-2016  wolfgang astleitner
  * email     mrwastl@users.sourceforge.net
  *
  *************************************************************************
@@ -31,7 +31,7 @@
 #ifndef SMP_DHTPANE_h
 #define SMP_DHTPANE_h
 
-#include "SMP_InfoPane.h"
+#include "SMP_TextPane.h"
 #include "SMPD_DHT.h"
 
 #define SMPANES_ALLOCATE_DHTPANE(pane_name, storage_depth, width, height) \
@@ -49,7 +49,7 @@ typedef enum DHTFeature {
 
 
 template <typename smpRGB>
-class SMP_DHTPane : public SMP_InfoPane<smpRGB> {
+class SMP_DHTPane : public SMP_TextPane<smpRGB> {
   public:
                     SMP_DHTPane(uint16_t width, uint16_t height, smpRGB* rgbBuffer = NULL);
 
@@ -59,8 +59,6 @@ class SMP_DHTPane : public SMP_InfoPane<smpRGB> {
     /* deactivated methods */
     virtual void    setMessage(String message) { this->message = ""; };
 
-    virtual void    setID(uint8_t id) { this->id = 0; };
-            uint8_t getID()           { return 0; };
   protected:
     virtual void    updateContent(uint32_t currMS = 0);
     SMPD_DHT      * dataProvider;

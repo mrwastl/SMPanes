@@ -283,6 +283,7 @@ void SMP_Pane<smpRGB>::setBorder(bool drawBorder) {
   if (this->w < 5 || this->h < 5) { // no border if pane too small
     this->drawBorder = false;
   }
+  this->calculateSizes();
 }
 
 

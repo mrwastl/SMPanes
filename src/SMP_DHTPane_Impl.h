@@ -6,7 +6,7 @@
  *
  *************************************************************************
  *
- * copyright (C)  2015  wolfgang astleitner
+ * copyright (C)  2015-2016  wolfgang astleitner
  * email     mrwastl@users.sourceforge.net
  *
  *************************************************************************
@@ -31,7 +31,7 @@
 
 template <typename smpRGB>
 SMP_DHTPane<smpRGB>::SMP_DHTPane(uint16_t width, uint16_t height, smpRGB* rgbBuffer) :
-    SMP_InfoPane<smpRGB>::SMP_InfoPane(width, height, rgbBuffer) {
+    SMP_TextPane<smpRGB>::SMP_TextPane(width, height, rgbBuffer) {
   this->feature = Celsius;
   this->dataProvider = NULL;
   this->oldValue = 999;

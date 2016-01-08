@@ -41,6 +41,7 @@
 
 #define SM_SUPPORT_ADDITIONAL_COLOURSPACES 1
 
+
 typedef enum LayerType {
   none = -2,
   undefined = -1,
@@ -80,6 +81,10 @@ class SMP_Layer {
     static    SMP_Layer     * lastLayer;
 };
 
+
+// small helper macro that unfortunately cannot be defined as normal static class method
+// (because of the lack of a common non-template SmartMatrix base class)
+#define SMP_BASE__CHAINADDLAYER(_matrix, _layer)  (_matrix).addLayer(& (_layer)); SMP_Base::chainAddLayer(_layer)
 
 class SMP_Base {
   public:
@@ -193,6 +198,7 @@ class SMP_Pane : public SMP_Base {
 
   protected:
                               SMP_Pane();
+    virtual   uint8_t         calculateSizes() = 0;
     virtual   bool            internalSetParent (SM_Layer& parent, LayerType parentType, uint8_t parentDepth);
 
     virtual   void            updateContent(uint32_t currMS = 0) = 0;

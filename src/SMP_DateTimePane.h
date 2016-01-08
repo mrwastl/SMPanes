@@ -6,7 +6,7 @@
  *
  *************************************************************************
  *
- * copyright (C)  2015  wolfgang astleitner
+ * copyright (C)  2015-2016  wolfgang astleitner
  * email     mrwastl@users.sourceforge.net
  *
  *************************************************************************
@@ -31,7 +31,7 @@
 #ifndef SMP_DATETIMEPANE_h
 #define SMP_DATETIMEPANE_h
 
-#include "SMP_InfoPane.h"
+#include "SMP_TextPane.h"
 #include "SMPD_Time.h"
 
 #define SMPANES_ALLOCATE_DATETIMEPANE(pane_name, storage_depth, width, height) \
@@ -72,7 +72,7 @@ typedef enum DateSeparator {
 
 
 template <typename smpRGB>
-class SMP_DateTimePane : public SMP_InfoPane<smpRGB> {
+class SMP_DateTimePane : public SMP_TextPane<smpRGB> {
   public:
                            SMP_DateTimePane(uint16_t width, uint16_t height, smpRGB* rgbBuffer = NULL);
 
@@ -93,10 +93,8 @@ class SMP_DateTimePane : public SMP_InfoPane<smpRGB> {
 
     /* deactivated methods */
     virtual void           setMessage(String message) { this->message = ""; };
-    virtual void           setID(uint8_t id) { this->id = 0; };
-            uint8_t        getID()           { return 0; };
   protected:
-            uint8_t        calculateSizes();
+    virtual uint8_t        calculateSizes();
     virtual void           updateContent(uint32_t currMS = 0);
             uint16_t       drawNumber(uint16_t x, uint16_t y, int16_t number, uint8_t digits);
             void           drawDigit(uint16_t x, uint16_t y, int8_t digit);
