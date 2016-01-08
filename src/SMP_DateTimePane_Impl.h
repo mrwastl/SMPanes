@@ -141,6 +141,7 @@ uint8_t SMP_DateTimePane<smpRGB>::calculateSizes() {
       Serial.print(this->segHeight); Serial.print(" / ");  Serial.println(this->segThick); 
   }
 #endif
+  SMP_TextPane::calculateSizes(); // call parent method (because of calc. font-size if autoFont)
   return digits;
 }
 
