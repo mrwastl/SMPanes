@@ -90,7 +90,6 @@ class SMP_Base {
   public:
     virtual   bool            update(uint32_t currMS = 0) = 0;
     virtual   void            draw() = 0;
-    virtual   uint8_t         getID() { return 0; };
     virtual   void            setMessage(String message, uint32_t currMS = 0) {};
 
               void            chainPane(SMP_Base & nextPane);
@@ -117,7 +116,17 @@ class SMP_Base {
               bool            setParent(SMLayerIndexed<rgb24,0>& parent) { return internalSetParent(parent, scrolling, 24);};
               bool            setParent(SMLayerIndexed<rgb48,0>& parent) { return internalSetParent(parent, scrolling, 48);};
 
-    /* static public methods */
+    virtual   void            setID(uint8_t id) { this->id = id; };
+              uint8_t         getID()           { return this->id; };
+
+    virtual   void            run() = 0;
+    virtual   void            stop(bool clear = true) = 0;
+
+    /* static public methods, single destination */
+    static    bool            sendMessage(uint8_t id, String message);
+    static    bool            sendActivate(uint8_t id, bool active, bool clear = true);
+
+    /* static public methods, multiple destinations */
     static    void            chainInit(uint16_t matrixWidth, uint16_t matrixHeight);
 
  /* poor man's reflection. very ugly, better solution would be nice */
@@ -152,11 +161,15 @@ class SMP_Base {
     static    bool            chainNeedsUpdate(uint32_t currMS = 0);
     static    void            chainDraw(rgb24 clearCol = rgb24(0,0,0));
 
-    static    bool            sendMessage(uint8_t id, String message);
+    static    void            chainActivate();
 
   protected:
                               SMP_Base();
     virtual   bool            internalSetParent (SM_Layer& parent, LayerType parentType, uint8_t parentDepth) = 0;
+
+              uint8_t         id;
+
+              bool            active;
 
               SMP_Base      * nextPane; // for chaining
 
@@ -191,9 +204,10 @@ class SMP_Pane : public SMP_Base {
               rotationDegrees getRotation() { return this->rotation; };
               void            setColours(smpRGB fgCol, smpRGB bgCol = rgb24(0, 0, 0), smpRGB borderCol = rgb24(0, 0, 0));
 
-              bool            update(uint32_t currMS = 0);
     virtual   void            run();
-    virtual   void            stop(bool clear = false) = 0;
+    virtual   void            stop(bool clear = true);
+
+              bool            update(uint32_t currMS = 0);
     virtual   void            draw() = 0;
 
   protected:
@@ -206,7 +220,6 @@ class SMP_Pane : public SMP_Base {
               bool            contentChanged;
 
               bool            transparent;
-              bool            active;
               rotationDegrees rotation;
               uint16_t        w;
               uint16_t        h;

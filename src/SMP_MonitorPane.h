@@ -6,7 +6,7 @@
  *
  *************************************************************************
  *
- * copyright (C)  2015  wolfgang astleitner
+ * copyright (C)  2015-2016  wolfgang astleitner
  * email     mrwastl@users.sourceforge.net
  *
  *************************************************************************
@@ -31,7 +31,7 @@
 #ifndef SMP_MONITORPANE_h
 #define SMP_MONITORPANE_h
 
-#include "SMP_InfoPane.h"
+#include "SMP_TextPane.h"
 
 #define SMPANES_ALLOCATE_MONITORPANE(pane_name, storage_depth, width, height) \
     static RGB_TYPE(storage_depth) pane_name##panedata[1*width*height];        \
@@ -40,7 +40,7 @@
 #define MONITORING_COLUMNS 4
 
 template <typename smpRGB>
-class SMP_MonitorPane : public SMP_InfoPane<smpRGB> {
+class SMP_MonitorPane : public SMP_TextPane<smpRGB> {
   public:
                            SMP_MonitorPane(uint16_t width, uint16_t height, smpRGB* rgbBuffer = NULL);
 

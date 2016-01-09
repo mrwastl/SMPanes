@@ -6,7 +6,7 @@
  *
  *************************************************************************
  *
- * copyright (C)  2016  wolfgang astleitner
+ * copyright (C)  2015-2016  wolfgang astleitner
  * email     mrwastl@users.sourceforge.net
  *
  *************************************************************************
@@ -37,7 +37,7 @@
 
 #define SMPANES_ALLOCATE_TEXTPANE(pane_name, storage_depth, width, height) \
     static RGB_TYPE(storage_depth) pane_name##panedata[1*width*height];    \
-    static SMP_InfoPane<RGB_TYPE(storage_depth)> pane_name(width, height, pane_name##panedata)
+    static SMP_TextPane<RGB_TYPE(storage_depth)> pane_name(width, height, pane_name##panedata)
 
 
 template <typename smpRGB>
@@ -47,7 +47,7 @@ class SMP_TextPane : public SMP_Pane<smpRGB> {
 
     virtual void          draw();
 
-    virtual void          stop(bool clear = false);
+    virtual void          stop(bool clear = true);
     virtual void          setMessage(String message, uint32_t currMS = 0);
 
     virtual void          setMessageGenerator(SMPD_Base & messageGenerator) { this->messageGenerator = &messageGenerator; };

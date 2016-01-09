@@ -6,7 +6,7 @@
  *
  *************************************************************************
  *
- * copyright (C)  2015  wolfgang astleitner
+ * copyright (C)  2015-2016  wolfgang astleitner
  * email     mrwastl@users.sourceforge.net
  *
  *************************************************************************
@@ -32,7 +32,7 @@
 
 template <typename smpRGB>
 SMP_MonitorPane<smpRGB>::SMP_MonitorPane(uint16_t width, uint16_t height, smpRGB* rgbBuffer) :
-    SMP_InfoPane<smpRGB>::SMP_InfoPane(width, height, rgbBuffer) {
+    SMP_TextPane<smpRGB>::SMP_TextPane(width, height, rgbBuffer) {
   this->drawWidth = 0;
   this->expireTime = 60 * 15;  // no data after 15 minutes: error
   this->lastUpdate = 0;

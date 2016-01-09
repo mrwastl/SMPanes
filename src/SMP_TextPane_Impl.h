@@ -6,7 +6,7 @@
  *
  *************************************************************************
  *
- * copyright (C)  2016  wolfgang astleitner
+ * copyright (C)  2015-2016  wolfgang astleitner
  * email     mrwastl@users.sourceforge.net
  *
  *************************************************************************
@@ -99,7 +99,7 @@ bool SMP_TextPane<smpRGB>::internalSetParent(SM_Layer* parent, LayerType parentT
 
 template <typename smpRGB>
 void SMP_TextPane<smpRGB>::stop(bool clear) {
-  this->active = false;
+  SMP_Pane<smpRGB>::stop(clear);
   if (clear && this->parentLayer) {
     ((SMLayerBackground<smpRGB,0>*)this->parentLayer)->fillScreen(rgb24(0,0,0));
   }

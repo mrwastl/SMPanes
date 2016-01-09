@@ -4,12 +4,12 @@
  * SMPanes.h
  * Main include file
  *
- * Includes all necessary include-files and SMP_InfoPane.
+ * Includes all necessary include-files and SMP_TextPane.
  * All other derived classes must be included before use.
  *
  *************************************************************************
  *
- * copyright (C)  2015  wolfgang astleitner
+ * copyright (C)  2015-2016  wolfgang astleitner
  * email     mrwastl@users.sourceforge.net
  *
  *************************************************************************
@@ -42,7 +42,7 @@
 #include "Layer.h"
 #include "MatrixCommon.h"
 
-#include "SMP_InfoPane.h"
+#include "SMP_TextPane.h"
 #include "SMPD_Base.h"
 
 #endif // SMPANES_h

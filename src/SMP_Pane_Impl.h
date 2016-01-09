@@ -101,6 +101,18 @@ void SMP_Base::chainDraw(rgb24 clearCol) {
   } while ( (next = next->getNextPane()) );
 }
 
+
+void SMP_Base::chainActivate() {
+
+  SMP_Base * next = SMP_Base::firstPane;
+  do {
+    if (next->getID()) {
+      next->run();
+    }
+  } while ( (next = next->getNextPane()) );
+}
+
+
 void SMP_Base::internalChainAdd(SMP_Base & pane) {
   if (SMP_Base::firstPane) {
     SMP_Base::lastPane->chainPane(pane);
@@ -115,13 +127,34 @@ void SMP_Base::internalChainAdd(SMP_Base & pane) {
 bool SMP_Base::sendMessage(uint8_t id, String message) {
   if ( ! id)  // ignore id == 0 
     return false;
-  
+
   bool rc = false;
 
   SMP_Base * next = SMP_Base::firstPane;
   do {
     if (id == next->getID()) {
       next->setMessage(message);
+      rc = true;
+    }
+  } while ( (next = next->getNextPane()) );
+  return rc;
+}
+
+
+bool SMP_Base::sendActivate(uint8_t id, bool activate, bool clear) {
+  if ( ! id)  // ignore id == 0 
+    return false;
+
+  bool rc = false;
+
+  SMP_Base * next = SMP_Base::firstPane;
+  do {
+    if (id == next->getID()) {
+      if (activate) {
+        next->run();
+      } else {
+        next->stop(clear);
+      }
       rc = true;
     }
   } while ( (next = next->getNextPane()) );
@@ -224,6 +257,7 @@ SMP_Pane<smpRGB>::SMP_Pane() : SMP_Base() {
   this->parentLayer = NULL;
   this->parentType = undefined;
   this->drawBorder = false;
+  this->id = 0;
 }
 
 template <typename smpRGB>
@@ -278,6 +312,21 @@ void SMP_Pane<smpRGB>::setPosition (uint16_t x, uint16_t y, Align posAlignHor, A
 
 
 template <typename smpRGB>
+void SMP_Pane<smpRGB>::run() {
+  if (! this->active) {
+    this->active = true;
+    this->contentChanged = true;
+  }
+}
+
+
+template <typename smpRGB>
+void SMP_Pane<smpRGB>::stop(bool clear) {
+  this->active = false;
+}
+
+
+template <typename smpRGB>
 void SMP_Pane<smpRGB>::setBorder(bool drawBorder) {
   this->drawBorder = drawBorder;
   if (this->w < 5 || this->h < 5) { // no border if pane too small
@@ -302,11 +351,6 @@ template <typename smpRGB>
 bool SMP_Pane<smpRGB>::update(uint32_t currMS) {
   this->updateContent(currMS);
   return contentChanged;
-}
-
-template <typename smpRGB>
-void SMP_Pane<smpRGB>::run() {
-  this->active = true;
 }
 
 template <typename smpRGB>
