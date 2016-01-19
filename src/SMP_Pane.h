@@ -166,6 +166,8 @@ class SMP_Base {
   protected:
                               SMP_Base();
     virtual   bool            internalSetParent (SM_Layer& parent, LayerType parentType, uint8_t parentDepth) = 0;
+                              // default: support BackgroundLayer only
+    virtual   bool            supportsLayerType (LayerType type) { return (type == background); };
 
               uint8_t         id;
 
@@ -216,6 +218,7 @@ class SMP_Pane : public SMP_Base {
     virtual   bool            internalSetParent (SM_Layer& parent, LayerType parentType, uint8_t parentDepth);
 
     virtual   void            updateContent(uint32_t currMS = 0) = 0;
+    virtual   void            drawContent() = 0;
 
               bool            contentChanged;
 

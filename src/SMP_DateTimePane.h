@@ -39,37 +39,28 @@
     static SMP_DateTimePane<RGB_TYPE(storage_depth)> pane_name(width, height, pane_name##panedata)
 
 
-typedef enum DateTimeFormat {
-  HHmm,     // 24 hours, minutes
-  hhmm,     // 12 hours, minutes
-  HHmmss,   // 24 hours, minutes, seconds
-  hhmmss,   // 12 hours, minutes, seconds
-  DD,       // just day (01-31)
-  MM,       // just month (01-12)
-  YY,       // just short year (00-99)
-  YYYY,     // just year
-  DDMM,     // day, month
-  MMDD,     // month, day
-  DDMMYY,   // day, month, short year
-  MMDDYY,   // funny american date format, short year
-  YYYYMMDD, // iso-date: year, month, day
-  DDMMYYYY, // day, month, year
-  MMDDYYYY  // funny american date format
-} DateTimeFormat;
+#define MAX_DATETIME_ELEMS 6
 
 
-typedef enum TimeSeparator {
-  tsColon,    // ':'
-  tsDot,      // '.'
-  tsBlinking  // blinking ':'
-} TimeSeparator;
-
-typedef enum DateSeparator {
-  dsDash,     // '-'
-  dsDot,      // '.'
-//  dsSlash    // '/'
-} DateSeparator;
-
+/* FORMAT string:
+ * date / time place holders:
+ *   %d  .. day 01..31
+ *   %H  .. hour 00..23
+ *   %I  .. hour 01..12
+ *   %M  .. minute 00..59
+ *   %m  .. month 01..12
+ *   %S  .. seconds 00..60
+ *   %y  .. year 00..99
+ *   %Y  .. year 4-digit
+ * separators:
+ *  '-'  .. dash  eg: "%Y-%m-%d"
+ *  '.'  .. dot   eg: "%d.%m.%Y"
+ *  '/'  .. dot in the middle (instead of a slash)  eg: "%m/%d/%y"
+ *  ':'  .. semicolon  eg: "%H:%M:%S"
+ *  '::' .. two semicolons = blinking semicolon(s)  eg: "%H::%M"
+ *  ' '  .. space - may be repeated   eg: "%H:%M  %Y-%m-%d"
+ * 
+ */
 
 template <typename smpRGB>
 class SMP_DateTimePane : public SMP_TextPane<smpRGB> {
@@ -77,48 +68,56 @@ class SMP_DateTimePane : public SMP_TextPane<smpRGB> {
                            SMP_DateTimePane(uint16_t width, uint16_t height, smpRGB* rgbBuffer = NULL);
 
             void           setDataProvider(SMPD_Time & dataProvider) { this->dataProvider = & dataProvider; };
-            void           setFormat(
-                             DateTimeFormat format = HHmm,
-                             TimeSeparator timeSeparator = tsBlinking,
-                             DateSeparator dateSeparator = dsDash
-                           );
 
-            void           setFormat(
-                             DateTimeFormat format = HHmm,
-                             DateSeparator dateSeparator = dsDash
-                           ) { setFormat(format, tsBlinking, dateSeparator); };
+            bool           setFormat(String format);
+
             void           setFX(uint8_t percent = 25);
             void           setFX(smpRGB fxCol);
             void           forceSegmentSettings(uint8_t segWidth, uint8_t segThick);
 
     /* deactivated methods */
-    virtual void           setMessage(String message) { this->message = ""; };
+    virtual void           setMessage(String message) { };
   protected:
     virtual uint8_t        calculateSizes();
+            bool           processFormat();
     virtual void           updateContent(uint32_t currMS = 0);
+    virtual void           drawContent();
             uint16_t       drawNumber(uint16_t x, uint16_t y, int16_t number, uint8_t digits);
             void           drawDigit(uint16_t x, uint16_t y, int8_t digit);
             void           drawBar(uint16_t x, uint16_t y, uint16_t w, uint16_t h, bool hor, smpRGB col);
     virtual bool           getTextAlignTrans(uint16_t* tX, uint16_t* tY, uint16_t* tW, uint16_t* tH, uint8_t dummy = 0);
 
 
+            uint8_t        dateTimeElems;
+            char           formatCode[MAX_DATETIME_ELEMS];
+            char           separatorCode[MAX_DATETIME_ELEMS - 1];
+            uint8_t        formatSize[MAX_DATETIME_ELEMS];
+            uint8_t        separatorWidth[MAX_DATETIME_ELEMS - 1];
+
             SMPD_Time    * dataProvider;
-            DateTimeFormat format;
-            TimeSeparator  timeSeparator;
-            DateSeparator  dateSeparator;
             uint8_t        segWidth;
             uint8_t        segHeight;
             uint8_t        segThick;
-            uint8_t        gapCount;
-            uint8_t        sepCount;
             bool           drawFX;
             smpRGB         fgColFX;
 
+            uint8_t        forceSegWidth;
+            uint8_t        forceSegThick;
+
+            uint8_t        resolution;
+            uint8_t        segTCount;
+            uint8_t        digitCount;
             uint16_t       drawWidth;
 
-            uint8_t        oldMin;
             uint8_t        oldSec;
+            uint8_t        oldMin;
+            uint8_t        oldHour;
             uint8_t        oldDay;
+            uint8_t        oldMon;
+            uint16_t       oldYear;
+
+            bool           showSec;
+            bool           showMin;
 };
 
 

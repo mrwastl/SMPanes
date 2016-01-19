@@ -35,31 +35,39 @@ SMP_DateTimePane<smpRGB>::SMP_DateTimePane(uint16_t width, uint16_t height, smpR
     SMP_TextPane<smpRGB>::SMP_TextPane(width, height, rgbBuffer) {
   this->dataProvider = NULL;
 
-  this->format = HHmm;
-  this->timeSeparator = tsBlinking;
-  this->dateSeparator = dsDash;
+  this->message = "%H::%M";   // default: hour, blinking ':', minute
+  this->resolution = 0;       // 0: blinking separator every second: 1: seconds, 2: minutes, 3: hours
+  this->showSec = false;
+  this->showMin = true;
 
   this->segThick = 1;
   this->segWidth = 3;
   this->segHeight = this->segWidth * 2 - this->segThick;
-  this->gapCount = 0;
+  this->segTCount = 0;
+  this->digitCount = 0;
   this->drawFX = false;
   this->fgColFX = rgb24(0xFF, 0xFF, 0xFF);
 
-  this->oldMin = 255;
-  this->oldSec = 255;
-  this->oldDay = 255;
+  this->forceSegWidth = 0;
+  this->forceSegThick = 0;
+
+  this->oldMin = 60;
+  this->oldSec = 61;
+  this->oldDay = 32;
+  this->oldMon = 13;
+  this->oldYear = 0;
+
   this->drawWidth = 0;
+  this->processFormat();
   this->calculateSizes();
 }
 
 
 template <typename smpRGB>
-void SMP_DateTimePane<smpRGB>::setFormat(DateTimeFormat format, TimeSeparator timeSeparator, DateSeparator dateSeparator) {
-  this->format = format;
-  this->timeSeparator = timeSeparator;
-  this->dateSeparator = dateSeparator;
-  this->calculateSizes();
+bool SMP_DateTimePane<smpRGB>::setFormat(String format) {
+  this->message = format;
+  this->processFormat();
+  return (this->calculateSizes() > 0);
 }
 
 
@@ -88,189 +96,359 @@ void SMP_DateTimePane<smpRGB>::setFX(smpRGB fxCol) {
 
 
 template <typename smpRGB>
+bool SMP_DateTimePane<smpRGB>::processFormat() {
+  int idx, pos;
+  char c;
+  bool valid = true;
+  bool isPercent = false;
+
+  this->dateTimeElems = 0;
+  this->resolution = 3;
+  this->showSec = false;
+  this->showMin = false;
+
+  for (idx = 0; idx < MAX_DATETIME_ELEMS - 1; idx++) {
+    this->separatorCode[idx] = 'x';
+    this->separatorWidth[idx] = 0;
+  }
+
+  pos = 0;
+  while (valid && (pos < this->message.length())) {
+    c = this->message[pos];
+    pos++;
+
+    if (isPercent) {
+      if (this->dateTimeElems >= MAX_DATETIME_ELEMS) {
+        valid = false;
+        break;
+      }
+
+      switch(c) {
+        case 'S':
+          if (this->resolution > 1) this->resolution = 1; // refresh at least every second
+          this->showSec = true;
+        case 'M':
+          if (this->resolution > 2) this->resolution = 2; // refresh at least every minute
+          this->showMin = true;
+        case 'I':
+        case 'H':
+        case 'd':
+        case 'm':
+        case 'y':
+        case 'Y':
+          this->formatCode[this->dateTimeElems] = c;
+          this->formatSize[this->dateTimeElems] = (c == 'Y') ? 4 : 2;
+          this->dateTimeElems ++;
+          break;
+        default:
+          valid = false;
+      }
+      isPercent = false;
+    } else {
+      switch(c) {
+        case '%':
+          isPercent = true;
+          break;
+        case '-':
+        case '.':
+        case '/':
+          if ( ( this->dateTimeElems > 0 && (this->dateTimeElems - 1) < (MAX_DATETIME_ELEMS - 1)) && 
+               (this->separatorCode[this->dateTimeElems - 1] == 'x')
+             ) {
+            this->separatorCode[this->dateTimeElems - 1] = c;
+            this->separatorWidth[this->dateTimeElems - 1] = (c == '-') ? 3 : 1;
+          } else {
+              valid = false;
+          }
+          break;
+        case ' ':
+        case ':':
+          if ( this->dateTimeElems > 0 && (this->dateTimeElems - 1) < (MAX_DATETIME_ELEMS - 1)) {
+            if (this->separatorCode[this->dateTimeElems - 1] == 'x' || this->separatorCode[this->dateTimeElems - 1] == c) {
+              if (c == ' ') {
+                this->separatorCode[this->dateTimeElems - 1] = c;
+                this->separatorWidth[this->dateTimeElems - 1] += 3;
+              } else {  // c == ':'
+                if (this->separatorCode[this->dateTimeElems - 1] == ':') {
+                  this->resolution = 0; // refresh every second and blink separator
+                } else {
+                  this->separatorCode[this->dateTimeElems - 1] = c;
+                  this->separatorWidth[this->dateTimeElems - 1] = 1;
+                }
+              }
+            } else {
+              valid = false;
+            }
+          } else {
+            valid = false;
+          }
+          break;
+        default:
+          valid = false;
+      }
+    }
+  }
+
+  return valid;
+}
+
+
+template <typename smpRGB>
 uint8_t SMP_DateTimePane<smpRGB>::calculateSizes() {
-  uint8_t maxW = this->w - ((this->drawBorder) ? 4 : 0);
-  uint8_t maxH = this->h - ((this->drawBorder) ? 4 : 0);
+  int idx;
 
-  uint8_t digits = 4;
-  uint8_t separators = 1;
-  uint8_t gapCount;
-  if (this->format < DDMM) {
-    if (this->format >= HHmmss && this->format <= hhmmss) {
-      digits += 2;
-      separators += 1;
+  uint8_t separatorT = 0;
+
+  /*
+   * calculating width using segment thickness ( = 1 T)
+   *
+   * TTTT
+   * ||||
+   * vvvv
+   * ***
+   * * *
+   * ***
+   * * *
+   * ***
+   *    ^
+   *    |
+   *    gap to next char / separator
+   */
+
+  this->digitCount = 0;
+  this->segTCount = 0;
+
+  for (idx = 0; idx < this->dateTimeElems; idx++) {
+    this->segTCount += this->formatSize[idx] * 3;   // one digit = 3 T
+    this->digitCount += this->formatSize[idx];
+  }
+  this->segTCount += (this->digitCount - 1);  // add gap (1 T) to next digit / separator
+
+
+  for (idx = 0; idx < this->dateTimeElems - 1; idx++) {
+    if (this->separatorCode[idx] != 'x') {
+      separatorT += this->separatorWidth[idx] + 1; // separator width (between 1 and 3 T) + gap (1 T) to next digit
     }
-  } else {
-    if (this->format >= YYYYMMDD) {
-      digits += 4;
-      separators += 1;
+  }
+
+  this->segTCount += separatorT; // add separator width + gap to next digit
+
+
+  if (this->forceSegThick && this->forceSegWidth) {
+    this->segThick = this->forceSegThick;
+    this->segWidth = this->forceSegWidth;
+
+    this->segHeight = this->segWidth * 2 - this->segThick;
+  } else{
+    uint8_t maxW = this->w - ((this->drawBorder) ? 4 : 0);
+    uint8_t maxH = this->h - ((this->drawBorder) ? 4 : 0);
+
+
+    // estimate best fitting thickness of segments
+    this->segThick = maxW / this->segTCount;
+
+    if (this->segThick * 5 > maxH) {
+      this->segThick = maxH / 5;
     }
+
+    this->segWidth = this->segThick * 3; // + ( (maxW - this->segTCount * this->segThick) / this->digitCount);
+    // temporary drawWidth, will be recalced below
+    this->drawWidth = 
+      this->segWidth * this->digitCount +  // width of all digits
+      this->segThick * (this->digitCount - 1) + // gaps to next digit (ignoring separators)
+      separatorT * this->segThick; // adding separator widths + gaps
+    // split remaining space to segwidth of digits
+    this->segWidth += (maxW - this->drawWidth) / this->digitCount;
+
+    this->segHeight = this->segWidth * 2 - this->segThick;
+    if (this->segHeight > maxH) {
+      this->segWidth = maxH / 2 + this->segThick;
+      this->segHeight = this->segWidth * 2 - this->segThick;
+    }
+
   }
-
-  gapCount = digits - 1 + 2 * separators;
-
-  // estimate best fitting thickness of segments
-  uint8_t initEst = maxW / (digits + separators / 2);
-  if (maxH < initEst) {
-    initEst = maxH;
-  }
-  this->segThick = initEst / 5; // 5 horizontal bars = total segment height
-
-  // calculate width and height of segments
-  //this->segWidth = ( maxW - ( (this->secondsMode == 1) ? 9 : 5) * this->segThick ) / ((this->secondsMode == 1) ? 6 : 4);
-  this->segWidth = (maxW -  this->segThick * gapCount ) / digits;
-
-  if (this->segWidth * 2 - this->segThick > maxH) {
-    this->segWidth = (maxH + this->segThick ) / 2;
-  }
-
-  this->gapCount = gapCount;
-
-  this->drawWidth = this->segWidth * digits + this->gapCount * this->segThick;
-  this->segHeight = this->segWidth * 2 - this->segThick;
+  this->drawWidth = 
+    this->segWidth * this->digitCount +  // width of all digits
+    this->segThick * (this->digitCount - 1) + // gaps to next digit (ignoring separators)
+    separatorT * this->segThick; // adding separator widths + gaps
 
 #if PANE_SERIAL_DEBUG == 1 && PANE_DATETIME_DEBUG > 0
   if (Serial) {
-    Serial.println("calculateSizes():");
-    Serial.print("  Digits/Separators/GapCount/initEst/DrawWidth: ");
-      Serial.print(digits); Serial.print(" / "); Serial.print(separators);
-      Serial.print(" / "); Serial.print(gapCount);
-      Serial.print(" / "); Serial.print(initEst);
+    Serial.print("calculateSizes("); Serial.println( (this->forceSegWidth) ? "forced): " : "): ");
+    Serial.println("  format codes / chars");
+    Serial.print("     | ");
+    for (idx = 0; idx < this->dateTimeElems; idx++) {
+      Serial.print(idx); Serial.print(" ");
+    }
+    Serial.println();
+    Serial.print("  ---|-");
+    for (idx = 0; idx < this->dateTimeElems; idx++) {
+      Serial.print("--");
+    }
+    Serial.println();
+    Serial.print("  fc | ");
+    for (idx = 0; idx < this->dateTimeElems; idx++) {
+      Serial.print(this->formatCode[idx]); Serial.print(" ");
+    }
+    Serial.println();
+    Serial.print("  fd | ");
+    for (idx = 0; idx < this->dateTimeElems; idx++) {
+      Serial.print(this->formatSize[idx]); Serial.print(" ");
+    }
+    Serial.println();
+    Serial.print("  sc | ");
+    for (idx = 0; idx < this->dateTimeElems - 1; idx++) {
+      Serial.print(this->separatorCode[idx]); Serial.print(" ");
+    }
+    Serial.println();
+    Serial.print("  sw | ");
+    for (idx = 0; idx < this->dateTimeElems - 1; idx++) {
+      Serial.print(this->separatorWidth[idx]); Serial.print(" ");
+    }
+    Serial.println();
+    Serial.println();
+
+    Serial.print("  digitCount/segTCount/resolution/dateTimeElems/drawWidth: ");
+      Serial.print(this->digitCount); Serial.print(" / "); Serial.print(this->segTCount);
+      Serial.print(" / "); Serial.print(this->resolution);
+      Serial.print(" / "); Serial.print(this->dateTimeElems);
       Serial.print(" / "); Serial.println(this->drawWidth);
     Serial.print("  SegWidth/SegHeight/SegThick: "); Serial.print(this->segWidth); Serial.print(" / "); 
       Serial.print(this->segHeight); Serial.print(" / ");  Serial.println(this->segThick); 
   }
 #endif
-  SMP_TextPane::calculateSizes(); // call parent method (because of calc. font-size if autoFont)
-  return digits;
+  SMP_TextPane<smpRGB>::calculateSizes(); // call parent method (because of calc. font-size if autoFont)
+  return this->digitCount;
 }
 
 
 template <typename smpRGB>
 void SMP_DateTimePane<smpRGB>::forceSegmentSettings(uint8_t segWidth, uint8_t segThick) {
-  uint8_t digits = calculateSizes();
-
-  this->segThick = segThick;
-  this->segWidth = segWidth;
-
-  this->drawWidth = this->segWidth * digits + this->gapCount * this->segThick;
-  this->segHeight = this->segWidth * 2 - this->segThick;
-#if PANE_SERIAL_DEBUG == 1 && PANE_DATETIME_DEBUG > 0
-  if (Serial) {
-    Serial.println("forceSegmentSettings():");
-    Serial.print("  Digits/GapCount/DrawWidth: ");
-      Serial.print(digits);
-      Serial.print(" / "); Serial.print(this->gapCount);
-      Serial.print(" / "); Serial.println(this->drawWidth);
-    Serial.print("  SegWidth/SegHeight/SegThick: "); Serial.print(this->segWidth); Serial.print(" / "); 
-      Serial.print(this->segHeight); Serial.print(" / ");  Serial.println(this->segThick); 
-  }
-#endif
+  this->forceSegThick = segThick;
+  this->forceSegWidth = segWidth;
+  calculateSizes();
 }
 
 
 template <typename smpRGB>
 void SMP_DateTimePane<smpRGB>::updateContent(uint32_t currMS) {
-  if ( ! (this->active && this->contentLayer) )
+  if ( ! this->active )
     return;
 
   uint32_t currTime = this->dataProvider->getEpochTime();
-  uint8_t colonPos = 0;
+
+  uint8_t currSec = second(currTime);
+  uint8_t currMin = minute(currTime);
+  uint8_t currHour = hour(currTime);
+  uint8_t currDay = day(currTime);
+  uint8_t currMon = month(currTime);
+  uint16_t currYear = year(currTime);
+
+  this->contentChanged = false;
+
+  switch (this->resolution) {
+    case 0:
+      if (currSec != this->oldSec)
+        this->contentChanged = true;
+      break;
+    case 1:
+      if (this->showSec && currSec != this->oldSec)
+        this->contentChanged = true;
+      break;
+    case 2:
+      if (this->showMin && currMin != this->oldMin)
+        this->contentChanged = true;
+      break;
+    default:
+      if (currHour != this->oldHour || currDay != this->oldDay || currMon != this->oldMon || currYear != this->oldYear)
+        this->contentChanged = true;
+  }
+
+  if (this->contentChanged) {
+    this->oldSec = currSec;
+    this->oldMin = currMin;
+    this->oldHour = currHour;
+    this->oldDay = currDay;
+    this->oldMon = currMon;
+    this->oldYear = currYear;
+  }
+}
+
+
+template <typename smpRGB>
+void SMP_DateTimePane<smpRGB>::drawContent() {
   uint16_t tx = 0;
   uint16_t ty = 0;
   uint16_t tw = this->w;
   uint16_t th = this->h;
   bool border = false;
 
-  if (this->format < DDMM) {
-    uint8_t  m = minute(currTime);
-    uint8_t  s = second(currTime);
-    uint8_t  h = hour(currTime);
-    bool showSeconds = (this->format >= HHmmss && this->format <= hhmmss);
-    bool changeSecs = showSeconds || (this->timeSeparator == tsBlinking);
+  if ( ! (this->active && this->contentLayer) )
+    return;
 
-    this->contentChanged = ((changeSecs) && (oldSec != s)) || (oldMin != m);
-    if ( this->contentChanged ) {
-      oldSec = s;
-      oldMin = m;
+  border = this->getTextAlignTrans(&tx, &ty, &tw, &th);
 
-
-      switch (this->timeSeparator) {
-        case  tsColon:
-        case tsBlinking:
-          colonPos = (this->segHeight - 2 * this->segThick ) / 3;
-          break;
-        default:
-          colonPos = this->segHeight - this->segThick;
-      }
-
-      border = this->getTextAlignTrans(&tx, &ty, &tw, &th);
-
-      if (border) {
-        ((SMLayerBackground<smpRGB,0>*)this->contentLayer)->fillRectangle(0, 0, this->w - 1, this->h - 1, this->borderCol, this->bgCol);
-      } else {
-        ((SMLayerBackground<smpRGB,0>*)this->contentLayer)->fillScreen(this->bgCol);
-      }
-
-      tx += this->drawNumber(tx, ty, h, 2);
-      tx += this->segThick;
-
-      if ( showSeconds || ( (this->timeSeparator == tsBlinking) && (s % 2) ) ) {
-        this->drawBar(tx, ty + colonPos, this->segThick, this->segThick, false, this->fgCol);
-        this->drawBar(tx, ty + this->segHeight - this->segThick - colonPos, this->segThick, this->segThick, false, this->fgCol);
-      } else {
-//        this->drawBar(tx, ty + colonPos, this->segThick, this->segThick, false, this->fgColFX);
-//        this->drawBar(tx, ty + this->segHeight - this->segThick - colonPos, this->segThick, this->segThick, false, this->fgColFX);
-        this->drawBar(tx, ty + colonPos, this->segThick, this->segThick, false, this->bgCol);
-        this->drawBar(tx, ty + this->segHeight - this->segThick - colonPos, this->segThick, this->segThick, false, this->bgCol);
-      }
-      tx += this->segThick + this->segThick;
-      tx += this->drawNumber(tx, ty, m, 2);
-      if (showSeconds == 1) {
-        tx += this->segThick;
-        this->drawBar(tx, ty + colonPos, this->segThick, this->segThick, false, this->fgCol);
-        this->drawBar(tx, ty + this->segHeight - this->segThick - colonPos, this->segThick, this->segThick, false, this->fgCol);
-        tx += this->segThick + this->segThick;
-        tx += this->drawNumber(tx, ty, s, 2);
-      }
-    }
+  if (border) {
+    ((SMLayerBackground<smpRGB,0>*)this->contentLayer)->fillRectangle(0, 0, this->w - 1, this->h - 1, this->borderCol, this->bgCol);
   } else {
-    uint8_t  d = day(currTime);
-    uint8_t  m = month(currTime);
-    uint16_t  y = year(currTime);
+    ((SMLayerBackground<smpRGB,0>*)this->contentLayer)->fillScreen(this->bgCol);
+  }
 
-    this->contentChanged = (oldDay != d);
-    if ( this->contentChanged ) {
-      oldDay = d;
-
-      switch (this->dateSeparator) {
-        case dsDash:
-          colonPos = this->segHeight / 2;
+  for (int i = 0; i < this->dateTimeElems; i++) {
+    switch(this->formatCode[i]) {
+      case 'S':
+        tx += this->drawNumber(tx, ty, this->oldSec, 2);
+        break;
+      case 'M':
+        tx += this->drawNumber(tx, ty, this->oldMin, 2);
+        break;
+      case 'I': // stupid am/pm format with [12, 1, 2, ..., 11]
+        tx += this->drawNumber(tx, ty, ((this->oldHour % 12) ? (this->oldHour % 12) : 12), 2);
+        break;
+      case 'H':
+        tx += this->drawNumber(tx, ty, this->oldHour, 2);
+        break;
+      case 'd':
+        tx += this->drawNumber(tx, ty, this->oldDay, 2);
+        break;
+      case 'm':
+        tx += this->drawNumber(tx, ty, this->oldMon, 2);
+        break;
+      case 'y':
+        tx += this->drawNumber(tx, ty, (this->oldYear % 100), 2);
+        break;
+      case 'Y':
+        tx += this->drawNumber(tx, ty, this->oldYear, 4);
+        break;
+    }
+    tx += this->segThick;
+    if (i < MAX_DATETIME_ELEMS -1 && separatorCode[i] != 'x') {
+      switch(this->separatorCode[i]) {
+        case '-':
+          this->drawBar(tx, ty + this->segWidth - this->segThick, this->segThick, 3 * this->segThick, false, this->fgCol);
+          tx += (3 + 1) * this->segThick;
           break;
-        default:
-          colonPos = this->segHeight - this->segThick;
-      }
-
-      border = this->getTextAlignTrans(&tx, &ty, &tw, &th);
-
-      if (border) {
-        ((SMLayerBackground<smpRGB,0>*)this->contentLayer)->fillRectangle(0, 0, this->w - 1, this->h - 1, this->borderCol, this->bgCol);
-      } else {
-        ((SMLayerBackground<smpRGB,0>*)this->contentLayer)->fillScreen(this->bgCol);
-      }
-
-      tx += this->drawNumber(tx, ty, d, 2);
-      tx += this->segThick;
-      this->drawBar(tx, ty + colonPos, this->segThick, this->segThick, false, this->fgCol);
-      tx += this->segThick + this->segThick;
-      tx += this->drawNumber(tx, ty, m, 2);
-      if (this->format >= YYYYMMDD) {
-        tx += this->segThick;
-        this->drawBar(tx, ty + colonPos, this->segThick, this->segThick, false, this->fgCol);
-        tx += this->segThick + this->segThick;
-        tx += this->drawNumber(tx, ty, y, 4);
+        case '.':
+          this->drawBar(tx, ty + 2 * (this->segWidth - this->segThick), this->segThick, this->segThick, false, this->fgCol);
+          tx += (1 + 1) * this->segThick;
+          break;
+        case '/':
+          this->drawBar(tx, ty + this->segWidth - this->segThick, this->segThick, this->segThick, false, this->fgCol);
+          tx += (1 + 1) * this->segThick;
+          break;
+        case ' ':
+          tx += (3 + 1) * this->segThick;
+          break;
+        case ':':
+          if (this->resolution > 0 || (this->oldSec % 2)) {
+            this->drawBar(tx, ty + this->segWidth - 2 * this->segThick, this->segThick, this->segThick, false, this->fgCol);
+            this->drawBar(tx, ty + this->segWidth, this->segThick, this->segThick, false, this->fgCol);
+          }
+          tx += (1 + 1) * this->segThick;
+          break;
       }
     }
+
   }
 }
 

@@ -61,11 +61,13 @@ class SMP_DHTPane : public SMP_TextPane<smpRGB> {
 
   protected:
     virtual void    updateContent(uint32_t currMS = 0);
+    virtual void    drawContent();
     SMPD_DHT      * dataProvider;
     DHTFeature      feature;
     bool            showUnit;
     String          unitText;
     float           oldValue;
+    DataStatus      status;
 };
 
 

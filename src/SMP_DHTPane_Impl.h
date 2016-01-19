@@ -34,7 +34,8 @@ SMP_DHTPane<smpRGB>::SMP_DHTPane(uint16_t width, uint16_t height, smpRGB* rgbBuf
     SMP_TextPane<smpRGB>::SMP_TextPane(width, height, rgbBuffer) {
   this->feature = Celsius;
   this->dataProvider = NULL;
-  this->oldValue = 999;
+  this->oldValue = 999.0;
+  this->status = OK;
 }
 
 
@@ -60,16 +61,15 @@ void SMP_DHTPane<smpRGB>::setFeature(DHTFeature feature, bool showUnit) {
 
 template <typename smpRGB>
 void SMP_DHTPane<smpRGB>::updateContent(uint32_t currMS) {
-  if (this->contentLayer && this->parentLayer && this->dataProvider) {
-    float value = oldValue;
-    uint8_t precision = 0;
-    bool status = OK;
+  float value = 0;
+  uint8_t precision = 0;
+  if (this->active && this->dataProvider) {
 
     this->contentChanged = this->dataProvider->update(/*currMS*/);
-    status = this->dataProvider->getStatus();
+    this->status = this->dataProvider->getStatus();
 
     // only change value if status is OK
-    if (status == OK) {
+    if (this->status == OK) {
       switch(this->feature) {
         case Humidity:
           precision = this->dataProvider->getHumidityPrecision();
@@ -81,32 +81,34 @@ void SMP_DHTPane<smpRGB>::updateContent(uint32_t currMS) {
       }
     }
 
-    this->contentChanged = abs(value - oldValue) > 0.05;
-
+    this->contentChanged = abs(value - this->oldValue) > 0.05;
     if (this->contentChanged) {
-      uint16_t tx = 0;
-      uint16_t ty = 0;
-      uint16_t tw = this->w;
-      uint16_t th = this->h;
-      bool     border = false;
-
-      String valueText = ( (status == OK) ? String(value, precision) : "-" ) + ((this->showUnit) ? this->unitText : "");
-
-      border = this->getTextAlignTrans(&tx, &ty, &tw, &th, valueText.length());
-
-      /* prepare drawing pane */
-      if (border) {
-        ((SMLayerBackground<smpRGB,0>*)this->contentLayer)->fillRectangle(0, 0, this->w - 1, this->h - 1, this->borderCol, this->bgCol);
-      } else {
-        ((SMLayerBackground<smpRGB,0>*)this->contentLayer)->fillScreen(this->bgCol);
-      }
-
-      /* write dataProvider value */
-      /* ARRGGHH: font is static in background layer class: thus set font before writing ... */
-      ((SMLayerBackground<smpRGB,0>*)this->contentLayer)->setFont( this->fontChoice );
-      ((SMLayerBackground<smpRGB,0>*)this->contentLayer)->drawString(tx, ty, this->fgCol, valueText.c_str());
-
       oldValue = value;
     }
   }
+  this->message = ( (this->status == OK) ? String(value, precision) : "-" ) + ((this->showUnit) ? this->unitText : "");
+}
+
+
+template <typename smpRGB>
+void SMP_DHTPane<smpRGB>::drawContent() {
+  uint16_t tx = 0;
+  uint16_t ty = 0;
+  uint16_t tw = this->w;
+  uint16_t th = this->h;
+  bool     border = false;
+
+  border = this->getTextAlignTrans(&tx, &ty, &tw, &th, this->message.length());
+
+  /* prepare drawing pane */
+  if (border) {
+    ((SMLayerBackground<smpRGB,0>*)this->contentLayer)->fillRectangle(0, 0, this->w - 1, this->h - 1, this->borderCol, this->bgCol);
+  } else {
+    ((SMLayerBackground<smpRGB,0>*)this->contentLayer)->fillScreen(this->bgCol);
+  }
+
+  /* write dataProvider value */
+  /* ARRGGHH: font is static in background layer class: thus set font before writing ... */
+  ((SMLayerBackground<smpRGB,0>*)this->contentLayer)->setFont( this->fontChoice );
+  ((SMLayerBackground<smpRGB,0>*)this->contentLayer)->drawString(tx, ty, this->fgCol, this->message.c_str());
 }

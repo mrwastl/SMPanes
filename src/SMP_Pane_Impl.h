@@ -63,24 +63,44 @@ void SMP_Base::chainInit(uint16_t matrixWidth, uint16_t matrixHeight) {
 
 #if SM_SUPPORT_ADDITIONAL_COLOURSPACES == 1
 void SMP_Base::chainAddPane(SMP_Base & pane, SMLayerBackground<rgb8,0>& parent) {
-  internalChainAdd(pane);
-  pane.setParent(parent);
+  if (pane.setParent(parent)) { // only add if parent layer type is supported by pane
+    internalChainAdd(pane);
+#if PANE_SERIAL_DEBUG > 0
+  } else {
+    Serial.println("chainAddPane: pane not added because parent layer type is not supported by pane.");
+#endif
+  }
 }
 
 void SMP_Base::chainAddPane(SMP_Base & pane, SMLayerBackground<rgb16,0>& parent) {
-  internalChainAdd(pane);
-  pane.setParent(parent);
+  if (pane.setParent(parent)) { // only add if parent layer type is supported by pane
+    internalChainAdd(pane);
+#if PANE_SERIAL_DEBUG > 0
+  } else {
+    Serial.println("chainAddPane: pane not added because parent layer type is not supported by pane.");
+#endif
+  }
 }
 #endif
 
 void SMP_Base::chainAddPane(SMP_Base & pane, SMLayerBackground<rgb24,0>& parent) {
-  internalChainAdd(pane);
-  pane.setParent(parent);
+  if (pane.setParent(parent)) { // only add if parent layer type is supported by pane
+    internalChainAdd(pane);
+#if PANE_SERIAL_DEBUG > 0
+  } else {
+    Serial.println("chainAddPane: pane not added because parent layer type is not supported by pane.");
+#endif
+  }
 }
 
 void SMP_Base::chainAddPane(SMP_Base & pane, SMLayerBackground<rgb48,0>& parent) {
-  internalChainAdd(pane);
-  pane.setParent(parent);
+  if (pane.setParent(parent)) { // only add if parent layer type is supported by pane
+    internalChainAdd(pane);
+#if PANE_SERIAL_DEBUG > 0
+  } else {
+    Serial.println("chainAddPane: pane not added because parent layer type is not supported by pane.");
+#endif
+  }
 }
 
 bool SMP_Base::chainNeedsUpdate(uint32_t currMS) {
@@ -362,10 +382,13 @@ void SMP_Pane<smpRGB>::setRotation(rotationDegrees newrotation) {
 
 template <typename smpRGB>
 bool SMP_Pane<smpRGB>::internalSetParent (SM_Layer& parent, LayerType parentType, uint8_t parentDepth) {
-  this->parentLayer = &parent;
-  this->parentType = parentType;
-  this->parentDepth = parentDepth;
-  return true;
+  if ( this->supportsLayerType(parentType) ) {
+    this->parentLayer = &parent;
+    this->parentType = parentType;
+    this->parentDepth = parentDepth;
+    return true;
+  }
+  return false;
 }
 
 

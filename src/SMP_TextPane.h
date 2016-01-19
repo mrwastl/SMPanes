@@ -62,6 +62,7 @@ class SMP_TextPane : public SMP_Pane<smpRGB> {
     virtual bool          internalSetParent(SM_Layer* parent, LayerType parentType, uint8_t parentDepth);
     virtual void          updateContent(uint32_t currMS = 0);
     virtual bool          getTextAlignTrans(uint16_t* tX, uint16_t* tY, uint16_t* tW, uint16_t* tH, uint8_t strLen);
+    virtual void          drawContent();
 
             String        message;
             bool          autoFont;

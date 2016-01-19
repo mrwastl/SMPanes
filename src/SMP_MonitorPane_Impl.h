@@ -38,6 +38,8 @@ SMP_MonitorPane<smpRGB>::SMP_MonitorPane(uint16_t width, uint16_t height, smpRGB
   this->lastUpdate = 0;
   this->saneData = true;
   this->showChangedDuration = 60 * 2;  // show changed data flag for at least 2 minutes
+  this->expiredData = false;
+  this->lastMS = 0;
 
   this->okCol = rgb24(0x00, 0xFF, 0x00);
   this->errCol = rgb24(0xFF, 0x00, 0x00);
@@ -67,13 +69,9 @@ bool SMP_MonitorPane<smpRGB>::setColumnParams(uint8_t column, char id, smpRGB fg
 
 template <typename smpRGB>
 void SMP_MonitorPane<smpRGB>::updateContent(uint32_t currMS) {
-  uint16_t tx = 0;
-  uint16_t ty = 0;
-  uint16_t tw = this->w;
-  uint16_t th = this->h;
-  bool border = false;
-  bool expiredData = (this->lastUpdate) ? false : true;
   uint8_t i;
+
+  this->expiredData = (this->lastUpdate) ? false : true;
 
   if ( ! (this->active && this->contentLayer) )
     return;
@@ -82,15 +80,29 @@ void SMP_MonitorPane<smpRGB>::updateContent(uint32_t currMS) {
     currMS = millis();
   }
 
+  this->lastMS = currMS; // save timestamp for drawContent()
+
   // data expired: force redraw (erase all content) + invalidate data
-  if ( this->lastUpdate && (this->lastUpdate + (this->expireTime * 1000) < currMS)) {
-    expiredData = true;
+  if ( this->lastUpdate && (this->lastUpdate + (this->expireTime * 1000) < this->lastMS)) {
+    this->expiredData = true;
     this->lastUpdate = 0;
     this->contentChanged = true;
     for (i = 0; i < MONITORING_COLUMNS; i++) {
       this->monValue[i] = 0; // reset
     }
   }
+
+}
+
+
+template <typename smpRGB>
+void SMP_MonitorPane<smpRGB>::drawContent() {
+  uint8_t i;
+  uint16_t tx = 0;
+  uint16_t ty = 0;
+  uint16_t tw = this->w;
+  uint16_t th = this->h;
+  bool border = false;
 
   border = this->getTextAlignTrans(&tx, &ty, &tw, &th);
 
@@ -106,7 +118,7 @@ void SMP_MonitorPane<smpRGB>::updateContent(uint32_t currMS) {
     ((SMLayerBackground<smpRGB,0>*)this->contentLayer)->setFont( this->fontChoice );
     pos = tx;
     if (this->saneData) {
-      if ( ! expiredData ) {
+      if ( ! this->expiredData ) {
         bool isFirst = true;
         for(i = 0; i < MONITORING_COLUMNS; i++) {
           if (this->monValue[i]) {
@@ -121,7 +133,7 @@ void SMP_MonitorPane<smpRGB>::updateContent(uint32_t currMS) {
               ((SMLayerBackground<smpRGB,0>*)this->contentLayer)->drawString(pos, ty, this->monFGCol[i], "##");
             }
             pos += this->font->Width * ( (this->monValue[i] > 9) ? 2 : 1);
-            if ( (this->monLastChanged[i] + this->showChangedDuration * 1000) > currMS ) {
+            if ( (this->monLastChanged[i] + this->showChangedDuration * 1000) > this->lastMS ) {
               ((SMLayerBackground<smpRGB,0>*)this->contentLayer)->drawString(pos-1, ty - (this->font->Height / 2) + 1, this->chgCol, ".");
               //pos += this->font->Width;
             }
@@ -136,6 +148,8 @@ void SMP_MonitorPane<smpRGB>::updateContent(uint32_t currMS) {
     }
   }
 }
+
+
 
 
 template <typename smpRGB>

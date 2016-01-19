@@ -178,11 +178,9 @@ bool SMP_TextPane<smpRGB>::getTextAlignTrans(uint16_t* tX, uint16_t* tY, uint16_
 
 template <typename smpRGB>
 void SMP_TextPane<smpRGB>::updateContent(uint32_t currMS) {
-  uint16_t tx = 0;
-  uint16_t ty = 0;
-  uint16_t tw = this->w;
-  uint16_t th = this->h;
-  bool border = false;
+  if ( ! this->active ) {
+    return;
+  }
 
   if (this->messageGenerator) {
     if (!currMS) {
@@ -191,24 +189,12 @@ void SMP_TextPane<smpRGB>::updateContent(uint32_t currMS) {
 
     if (this->messageGenerator->update(currMS)) {
       String newMessage = this->messageGenerator->getMessage();
+
       if (newMessage != this->message) {
         this->contentChanged = true;
         this->message = newMessage;
       }
     }
-  }
-
-  border = this->getTextAlignTrans(&tx, &ty, &tw, &th, this->message.length());
-
-  if (this->contentChanged && this->contentLayer) {
-    if (border) {
-      ((SMLayerBackground<smpRGB,0>*)this->contentLayer)->fillRectangle(0, 0, this->w - 1, this->h - 1, this->borderCol, this->bgCol);
-    } else {
-      ((SMLayerBackground<smpRGB,0>*)this->contentLayer)->fillScreen(this->bgCol);
-    }
-    /* ARRGGHH: font is static in background layer class: thus set font before writing ... */
-    ((SMLayerBackground<smpRGB,0>*)this->contentLayer)->setFont( this->fontChoice );
-    ((SMLayerBackground<smpRGB,0>*)this->contentLayer)->drawString(tx, ty, this->fgCol, this->message.c_str());
   }
 }
 
@@ -235,33 +221,92 @@ void SMP_TextPane<smpRGB>::setFont(bitmap_font * font) {
 };
 #endif
 
+
+#define INLINE_TEXTPANE_DRAWPARENT(_layerdepth) \
+  if (this->transparent) {\
+    if (border) {\
+      ((SMLayerBackground<RGB_TYPE(_layerdepth),0>*)this->parentLayer)->drawRectangle(this->x, this->y, this->x + this->w - 1, this->y + this->h - 1, this->borderCol); \
+    } \
+  } else {\
+    if (border) { \
+      ((SMLayerBackground<RGB_TYPE(_layerdepth),0>*)this->parentLayer)->fillRectangle(this->x, this->y, this->x + this->w - 1, this->y + this->h - 1, this->borderCol, this->bgCol); \
+    } else { \
+      ((SMLayerBackground<RGB_TYPE(_layerdepth),0>*)this->parentLayer)->fillRectangle(this->x, this->y, this->x + this->w - 1, this->y + this->h - 1, this->bgCol); \
+    } \
+  } \
+  ((SMLayerBackground<RGB_TYPE(_layerdepth),0>*)this->parentLayer)->setFont( this->fontChoice ); \
+  ((SMLayerBackground<RGB_TYPE(_layerdepth),0>*)this->parentLayer)->drawString(this->x + tx, this->y + ty, this->fgCol, this->message.c_str())
+
+
+template <typename smpRGB>
+void SMP_TextPane<smpRGB>::drawContent() {
+  uint16_t tx = 0;
+  uint16_t ty = 0;
+  uint16_t tw = this->w;
+  uint16_t th = this->h;
+  bool border = false;
+
+  border = this->getTextAlignTrans(&tx, &ty, &tw, &th, this->message.length());
+
+  if (this->contentChanged && this->contentLayer) {
+    if (border) {
+      ((SMLayerBackground<smpRGB,0>*)this->contentLayer)->fillRectangle(0, 0, this->w - 1, this->h - 1, this->borderCol, this->bgCol);
+    } else {
+      ((SMLayerBackground<smpRGB,0>*)this->contentLayer)->fillScreen(this->bgCol);
+    }
+    /* ARRGGHH: font is static in background layer class: thus set font before writing ... */
+    ((SMLayerBackground<smpRGB,0>*)this->contentLayer)->setFont( this->fontChoice );
+    ((SMLayerBackground<smpRGB,0>*)this->contentLayer)->drawString(tx, ty, this->fgCol, this->message.c_str());
+  } else if (this->parentType == background) {
+    switch (this->parentDepth) { // need better solution for this
+#if SM_SUPPORT_ADDITIONAL_COLOURSPACES == 1
+      case 8:
+        INLINE_TEXTPANE_DRAWPARENT(8);
+        break;
+      case 16:
+        INLINE_TEXTPANE_DRAWPARENT(16);
+        break;
+#endif
+      case 24:
+        INLINE_TEXTPANE_DRAWPARENT(24);
+        break;
+      default:
+        INLINE_TEXTPANE_DRAWPARENT(48);
+    }
+  }
+}
+
+
 template <typename smpRGB>
 void SMP_TextPane<smpRGB>::draw() {
-  if ( ! (this->active && this->parentLayer && this->contentLayer) )
+  if ( ! (this->active && this->parentLayer) )
     return;
 
   uint16_t i, j;
   smpRGB col;
 
-  for (j = 0; j < this->h; j++) {
-    for (i = 0; i < this->w; i++) {
-      col = ((SMLayerBackground<smpRGB,0>*)this->contentLayer)->readPixel(i, j);
-      if ( !  ( this->transparent && col.red == this->bgCol.red && col.green == this->bgCol.green && col.blue == this->bgCol.blue ) ) {
-        switch (this->parentDepth) { // need better solution for this
+  this->drawContent();
+
+  if (this->contentLayer) {
+    for (j = 0; j < this->h; j++) {
+      for (i = 0; i < this->w; i++) {
+        col = ((SMLayerBackground<smpRGB,0>*)this->contentLayer)->readPixel(i, j);
+        if ( !  ( this->transparent && col.red == this->bgCol.red && col.green == this->bgCol.green && col.blue == this->bgCol.blue ) ) {
+          switch (this->parentDepth) { // need better solution for this
 #if SM_SUPPORT_ADDITIONAL_COLOURSPACES == 1
-          case 8:
-            ((SMLayerBackground<rgb8,0>*)this->parentLayer)->drawPixel(i+this->x, j+this->y, col);
-            break;
-          case 16:
-            ((SMLayerBackground<rgb16,0>*)this->parentLayer)->drawPixel(i+this->x, j+this->y, col);
-            break;
+            case 8:
+              ((SMLayerBackground<rgb8,0>*)this->parentLayer)->drawPixel(i+this->x, j+this->y, col);
+              break;
+            case 16:
+              ((SMLayerBackground<rgb16,0>*)this->parentLayer)->drawPixel(i+this->x, j+this->y, col);
+              break;
 #endif
-          case 24:
-            ((SMLayerBackground<rgb24,0>*)this->parentLayer)->drawPixel(i+this->x, j+this->y, col);
-            break;
-          default:
-            ((SMLayerBackground<rgb48,0>*)this->parentLayer)->drawPixel(i+this->x, j+this->y, col);
-            break;
+            case 24:
+              ((SMLayerBackground<rgb24,0>*)this->parentLayer)->drawPixel(i+this->x, j+this->y, col);
+              break;
+            default:
+              ((SMLayerBackground<rgb48,0>*)this->parentLayer)->drawPixel(i+this->x, j+this->y, col);
+          }
         }
       }
     }

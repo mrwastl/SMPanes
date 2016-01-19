@@ -50,6 +50,7 @@ class SMP_MonitorPane : public SMP_TextPane<smpRGB> {
     virtual void           setMessage(String message, uint32_t currMS = 0);
 
     virtual bool           getTextAlignTrans(uint16_t* tX, uint16_t* tY, uint16_t* tW, uint16_t* tH, uint8_t dummy = 0);
+    virtual void           drawContent();
 
             bool           setColumnParams(uint8_t column, char id, smpRGB fg, smpRGB bg = rgb24(0x00, 0x00, 0x00));
 
@@ -57,8 +58,10 @@ class SMP_MonitorPane : public SMP_TextPane<smpRGB> {
             uint32_t       lastUpdate;
             uint16_t       drawWidth;
             uint16_t       expireTime;
+            bool           expiredData;
             uint16_t       showChangedDuration;
             bool           saneData;
+            uint32_t       lastMS;
 
             smpRGB         okCol;
             smpRGB         errCol;
