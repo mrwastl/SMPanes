@@ -194,17 +194,15 @@ template <typename smpRGB>
 class SMP_Pane : public SMP_Base {
   public:
               void            setPosition (uint16_t x = 0, uint16_t y = 0, Align posAlignHor = left, Align posAlignVert = top);
-              void            setTransparent(bool transparent) { this->transparent = transparent; };
-              void            setBorder(bool drawBorder = true);
-              bool            isTransparent() { return this->transparent; }
-              bool            isBorder() { return this->drawBorder; }
-              void            setRotation(rotationDegrees newrotation);
+              void            setColours(smpRGB fgCol);
+              void            setColours(smpRGB fgCol, smpRGB bgCol);
+              void            setBorder(bool drawBorder = true, smpRGB borderCol = rgb24(0, 0, 0));
               uint16_t        getX() { return this->x; };
               uint16_t        getY() { return this->y; };
               uint16_t        getWidth() { return this->w; };
               uint16_t        getHeight() { return this->h; };
+              void            setRotation(rotationDegrees newrotation);
               rotationDegrees getRotation() { return this->rotation; };
-              void            setColours(smpRGB fgCol, smpRGB bgCol = rgb24(0, 0, 0), smpRGB borderCol = rgb24(0, 0, 0));
 
     virtual   void            run();
     virtual   void            stop(bool clear = true);

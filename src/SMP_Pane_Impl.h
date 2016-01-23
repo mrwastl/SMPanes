@@ -347,25 +347,37 @@ void SMP_Pane<smpRGB>::stop(bool clear) {
 
 
 template <typename smpRGB>
-void SMP_Pane<smpRGB>::setBorder(bool drawBorder) {
+void SMP_Pane<smpRGB>::setBorder(bool drawBorder, smpRGB borderCol) {
   this->drawBorder = drawBorder;
   if (this->w < 5 || this->h < 5) { // no border if pane too small
     this->drawBorder = false;
   }
+  this->borderCol = borderCol;
   this->calculateSizes();
 }
 
 
 template <typename smpRGB>
-void SMP_Pane<smpRGB>::setColours (smpRGB fgCol, smpRGB bgCol, smpRGB borderCol) {
+void SMP_Pane<smpRGB>::setColours (smpRGB fgCol) {
   this->fgCol = fgCol;
-  this->bgCol = bgCol;
-  this->borderCol = borderCol;
+  this->transparent = true;
 
   if (this->parentType == indexed) {
     this->fgWhite = ( this->fgCol.red || this->fgCol.green || this->fgCol.blue );
   }
 };
+
+template <typename smpRGB>
+void SMP_Pane<smpRGB>::setColours (smpRGB fgCol, smpRGB bgCol) {
+  this->fgCol = fgCol;
+  this->bgCol = bgCol;
+  this->transparent = false;
+
+  if (this->parentType == indexed) {
+    this->fgWhite = ( this->fgCol.red || this->fgCol.green || this->fgCol.blue );
+  }
+};
+
 
 template <typename smpRGB>
 bool SMP_Pane<smpRGB>::update(uint32_t currMS) {
